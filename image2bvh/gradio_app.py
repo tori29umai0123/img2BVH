@@ -840,12 +840,63 @@ def _pick_free_port(host: str, start: int, tries: int = 50) -> int:
     raise OSError(f"No free port in {start}..{start + tries - 1} on {host}")
 
 
+def _show_control_window(port: int) -> None:
+    """Black control window. Closing it terminates the whole process.
+
+    image2bvh.exe is a windowed (no-console) build, so without a visible
+    surface there's nowhere for the user to click "quit". This Tk window
+    is the off-switch: WM_DELETE_WINDOW → os._exit so uvicorn, the
+    inference threads and the Triton compile worker all go away together.
+    """
+    import os
+    import tkinter as tk
+
+    root = tk.Tk()
+    root.title("image2bvh")
+    root.configure(bg="black")
+    root.geometry("520x260")
+    root.minsize(320, 160)
+
+    def _quit() -> None:
+        os._exit(0)
+
+    root.protocol("WM_DELETE_WINDOW", _quit)
+
+    tk.Label(
+        root,
+        text=(
+            "image2bvh は起動中です\n\n"
+            f"http://127.0.0.1:{port}\n\n"
+            "このウィンドウを閉じるとアプリが終了します"
+        ),
+        fg="white",
+        bg="black",
+        font=("Meiryo UI", 11),
+        justify="center",
+    ).pack(expand=True, fill="both", padx=20, pady=20)
+
+    root.mainloop()
+
+
 def main() -> None:
-    """Launch the Gradio app on the first free port at/above 7860."""
+    """Start Gradio in the background and block on a Tk control window.
+
+    Gradio's launch() normally blocks the main thread until ctrl-C, but
+    in a windowed PyInstaller build there's no terminal to interrupt.
+    prevent_thread_lock=True returns control after the server is up so
+    we can hand the main thread to Tk — closing that window kills the
+    process via os._exit (see _show_control_window).
+    """
     paths.ensure_dirs()
     demo = build_ui()
     port = _pick_free_port("127.0.0.1", 7860)
-    demo.queue().launch(server_name="127.0.0.1", server_port=port, inbrowser=True)
+    demo.queue().launch(
+        server_name="127.0.0.1",
+        server_port=port,
+        inbrowser=True,
+        prevent_thread_lock=True,
+    )
+    _show_control_window(port)
 
 
 if __name__ == "__main__":

@@ -206,7 +206,8 @@ hiddenimports += [
 # Mirrors the "deliberately excluded" list from pyproject.toml.
 # ---------------------------------------------------------------------------
 excludes = [
-    "tkinter",
+    # tkinter is intentionally NOT excluded — gradio_app.main() uses it for
+    # the black control window that doubles as the app's off-switch.
     "matplotlib",
     "IPython",
     "jupyter",
