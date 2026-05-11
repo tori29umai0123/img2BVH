@@ -43,6 +43,11 @@ COLLECT_TARGETS = [
     # WebUI + 3D preview frontends
     "gradio",
     "gradio_client",
+    # gradio deps that ship a runtime version.txt (PyInstaller static
+    # analysis grabs the .py but not the data file → FileNotFoundError
+    # at import unless we collect_all them explicitly).
+    "safehttpx",
+    "groovy",
     "plotly",
     # SAM3 / SAM 3D Body loaders
     "transformers",
