@@ -104,13 +104,24 @@ datas += collect_data_files(
         "**/*.npy", "**/*.npz",
         "**/*.pkl",
         "**/*.txt", "**/*.md",
-        # dinov3_repo is loaded via ``torch.hub.load(..., source="local")``
-        # which does on-disk imports of hubconf.py and the dinov3/* tree —
-        # PYZ-only inclusion isn't enough; the .py files have to exist as
-        # real files on disk under _internal\image2bvh\vendor\....
-        "**/dinov3_repo/**/*.py",
     ],
 )
+
+# dinov3_repo is loaded via ``torch.hub.load(..., source="local")`` which
+# does on-disk imports of hubconf.py and the dinov3/* tree. PYZ-only
+# inclusion isn't enough; the .py files have to exist as real files on
+# disk. collect_data_files defaults to include_py_files=False, and
+# dinov3_repo lacks __init__.py at its top level so collect_submodules
+# can't reach it either — walk the tree by hand.
+dinov3_repo_src = PROJECT_ROOT / "image2bvh" / "vendor" / "sam_3d_body" / "models" / "backbones" / "dinov3_repo"
+if dinov3_repo_src.is_dir():
+    for f in dinov3_repo_src.rglob("*"):
+        if not f.is_file():
+            continue
+        if "__pycache__" in f.parts:
+            continue
+        rel_parent = f.parent.relative_to(PROJECT_ROOT)
+        datas.append((str(f), str(rel_parent)))
 
 # importlib.metadata.version() lookups happen at import time for several deps.
 # Without dist-info, those calls raise PackageNotFoundError and break startup.
