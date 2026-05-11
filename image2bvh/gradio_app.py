@@ -822,11 +822,30 @@ def build_ui() -> gr.Blocks:
     return demo
 
 
+def _pick_free_port(host: str, start: int, tries: int = 50) -> int:
+    """Walk forward from ``start`` until a TCP port is bind-able on ``host``.
+
+    Lets a second instance launch on 7861 etc. instead of dying with
+    ``OSError: Cannot find empty port`` when the previous run is still up.
+    """
+    import socket
+    for offset in range(tries):
+        port = start + offset
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind((host, port))
+            except OSError:
+                continue
+            return port
+    raise OSError(f"No free port in {start}..{start + tries - 1} on {host}")
+
+
 def main() -> None:
-    """Launch the Gradio app on http://127.0.0.1:7860 (matches old FastAPI default)."""
+    """Launch the Gradio app on the first free port at/above 7860."""
     paths.ensure_dirs()
     demo = build_ui()
-    demo.queue().launch(server_name="127.0.0.1", server_port=7860, inbrowser=True)
+    port = _pick_free_port("127.0.0.1", 7860)
+    demo.queue().launch(server_name="127.0.0.1", server_port=port, inbrowser=True)
 
 
 if __name__ == "__main__":
