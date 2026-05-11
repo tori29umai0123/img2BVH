@@ -41,6 +41,25 @@ def _setup_frozen_paths() -> None:
     # ``sys.executable`` → ``<install_root>\image2bvh.exe``
     install_root = Path(sys.executable).resolve().parent
 
+    # Windowed PyInstaller builds (console=False) launched without a parent
+    # console get sys.stdout / sys.stderr == None. Anything that calls
+    # ``.isatty()`` (uvicorn's ColourizedFormatter, click's echo, etc.)
+    # then dies with AttributeError before the app can boot. Redirect
+    # both to a rotating log file next to the EXE so users (and we) can
+    # actually read the traceback when something goes wrong.
+    if sys.stdout is None or sys.stderr is None:
+        log_path = install_root / "image2bvh.log"
+        try:
+            log_fh = open(log_path, "a", encoding="utf-8", errors="replace", buffering=1)
+        except OSError:
+            # Install dir not writable for some reason — fall back to /dev/null
+            # equivalent so at least .isatty() works.
+            log_fh = open(os.devnull, "w", encoding="utf-8", errors="replace")
+        if sys.stdout is None:
+            sys.stdout = log_fh
+        if sys.stderr is None:
+            sys.stderr = log_fh
+
     # Triton: keep the JIT cache persistent so the user doesn't pay the
     # ~5-15s sm_xx codegen tax on every launch. The install dir is user-
     # writable thanks to Inno Setup's ``{localappdata}\Programs\`` target,
