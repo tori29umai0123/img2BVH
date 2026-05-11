@@ -113,6 +113,32 @@ if (-not (Test-Path $expectedExe)) {
     throw "Expected $expectedExe missing — PyInstaller output incomplete"
 }
 
+# --- 3.5) Lift bundled runtime/ out of _internal\ --------------------------
+# PyInstaller 6.x parks every datas entry under _internal\, but image2bvh's
+# paths.py anchors RUNTIME_DIR on Path(sys.executable).parent (i.e. the EXE
+# directory, not _MEIPASS). Without this move, sam3dbody_ready() returns
+# False at runtime and the bootstrap re-downloads ~6 GB of weights on first
+# launch. Idempotent so -SkipPyInstaller can re-trigger packaging without
+# re-running PyInstaller.
+$bundleRootEarly = Join-Path $DistDir "image2bvh"
+$internalRuntime = Join-Path $bundleRootEarly "_internal\runtime"
+$exeLevelRuntime = Join-Path $bundleRootEarly "runtime"
+if (Test-Path $internalRuntime) {
+    Write-Host "[build] Lifting _internal\runtime\ -> runtime\ next to image2bvh.exe"
+    if (Test-Path $exeLevelRuntime) {
+        # Stale empty model dirs from a prior bootstrap-on-first-run attempt.
+        Remove-Item -Recurse -Force $exeLevelRuntime
+    }
+    Move-Item $internalRuntime $exeLevelRuntime
+}
+
+# Strip first-run-only artefacts so the SFX archive ships clean. These get
+# re-created the moment the user launches image2bvh.exe.
+foreach ($transient in @("hf-cache", "tmp")) {
+    $p = Join-Path $bundleRootEarly $transient
+    if (Test-Path $p) { Remove-Item -Recurse -Force $p }
+}
+
 # --- 4) LICENSE_BUNDLE.txt + Portable_README.txt into the bundle root ------
 # Both files end up at dist\image2bvh\<file>, so they show up at the root of
 # whatever folder the user extracts the SFX to. SAM License §1.b.i / DINOv3

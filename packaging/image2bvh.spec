@@ -104,6 +104,11 @@ datas += collect_data_files(
         "**/*.npy", "**/*.npz",
         "**/*.pkl",
         "**/*.txt", "**/*.md",
+        # dinov3_repo is loaded via ``torch.hub.load(..., source="local")``
+        # which does on-disk imports of hubconf.py and the dinov3/* tree —
+        # PYZ-only inclusion isn't enough; the .py files have to exist as
+        # real files on disk under _internal\image2bvh\vendor\....
+        "**/dinov3_repo/**/*.py",
     ],
 )
 
