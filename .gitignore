@@ -1,0 +1,78 @@
+# --- Python ----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- uv / venv -------------------------------------------------------------
+.venv/
+venv/
+env/
+# uv.lock IS committed — it pins resolved deps across platforms.
+
+# --- Runtime artefacts (large, downloaded by bootstrap) --------------------
+# Models (SAM3 ~3GB, SAM3DBody, etc.) and Blender Portable (~75MB-400MB).
+runtime/
+# but keep the directory itself so first-run code can write into it
+!runtime/.gitkeep
+
+# --- Build-time vendored tools (downloaded by build.ps1) ------------------
+# 7-Zip portable etc. — not source, fetched on demand.
+.build-tools/
+
+# --- BVH outputs (transient — wiped at the start of each inference) -------
+tmp/
+!tmp/.gitkeep
+
+# --- User-editable config (auto-generated with defaults on first run) ------
+config.ini
+
+# --- IDE / editor ----------------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# --- OS --------------------------------------------------------------------
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# --- Claude Code -----------------------------------------------------------
+# Per-user local settings (permissions / approvals etc.)
+.claude/settings.local.json
+.claude/history/
+.claude/projects/
+
+# --- Logs / temp -----------------------------------------------------------
+*.log
+.tmp/
+tmp/
+gradio_cached_examples/
+
+# --- HuggingFace cache (defensive — usually outside repo) ------------------
+.cache/
+huggingface/
+
+# --- Misc large binaries that may accidentally land in the tree -----------
+*.ckpt
+*.pt
+*.safetensors
+*.bin
+*.zip
+*.tar
+*.tar.xz
+*.tar.gz
+*.dmg
+# (allow source assets if any are intentionally checked in by adding
+#  a more-specific !path/to/file.ext below)

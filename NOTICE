@@ -1,0 +1,138 @@
+image2BVH
+=========
+
+This product redistributes and/or builds upon the following third-party
+components. Attribution and license inheritance details are listed below.
+The full text of each non-MIT license is included in LICENSES/ at the root
+of this repository.
+
+------------------------------------------------------------------------
+1. SAM 3 (text-prompt promptable concept segmentation)
+------------------------------------------------------------------------
+   Upstream:    https://huggingface.co/facebook/sam3
+   Owner:       Meta Platforms, Inc.
+   License:     SAM License  (Meta, "Last Updated: November 19, 2025")
+                LICENSES/SAM_LICENSE.txt
+   Use here:    SAM 3 model weights are auto-downloaded by image2bvh's
+                bootstrap module the first time the user clicks the
+                "Generate masks" button. The weights themselves are NOT
+                shipped in this repository; users must accept the SAM
+                License (and Meta's gating workflow) to obtain them.
+                The inference code that loads / runs SAM 3 lives in
+                image2bvh/segmentation.py and is glue around the
+                transformers Sam3Model / Sam3Processor classes.
+
+------------------------------------------------------------------------
+2. SAM 3D Body
+------------------------------------------------------------------------
+   Upstream:    https://huggingface.co/jetjodh/sam-3d-body-dinov3
+                (community mirror of Meta's SAM 3D Body release)
+   Owner:       Meta Platforms, Inc.
+   License:     SAM License  (Meta)
+                LICENSES/SAM_LICENSE.txt
+   Use here:    The SAM 3D Body inference package is VENDORED into
+                image2bvh/vendor/sam_3d_body/ from
+                https://github.com/PozzettiAndrea/ComfyUI-SAM3DBody
+                (see #5 below). All Meta-authored .py files in that
+                tree carry the original "Copyright (c) Meta Platforms,
+                Inc. and affiliates." header. SAM 3D Body model
+                weights are auto-downloaded at runtime; they are NOT
+                shipped in this repository.
+
+------------------------------------------------------------------------
+3. DINOv3 (vision-transformer backbone used by SAM 3D Body)
+------------------------------------------------------------------------
+   Upstream:    https://github.com/facebookresearch/dinov3
+   Owner:       Meta Platforms, Inc.
+   License:     DINOv3 License  (Meta, "Last Updated: August 19, 2025")
+                LICENSES/DINOv3_LICENSE.md
+   Use here:    A snapshot of the upstream DINOv3 code is vendored at
+                image2bvh/vendor/sam_3d_body/models/backbones/dinov3_repo/
+                so that SAM 3D Body's backbone loader works without an
+                external git clone step. The original DINOv3 license
+                file is preserved in that directory and is also copied
+                to LICENSES/DINOv3_LICENSE.md for visibility.
+
+------------------------------------------------------------------------
+4. ComfyUI SAM 3 node (segmentation reference)
+------------------------------------------------------------------------
+   Upstream:    https://github.com/wouterverweirder/comfyui_sam3
+   License:     See upstream repository.
+   Use here:    Used as a reference for SAM 3 keyword-based
+                segmentation. No code is copied verbatim; only the
+                approach (text-prompt -> instance masks) is replicated
+                in image2bvh/segmentation.py.
+
+------------------------------------------------------------------------
+5. ComfyUI SAM 3D Body node (pose estimation reference)
+------------------------------------------------------------------------
+   Upstream:    https://github.com/PozzettiAndrea/ComfyUI-SAM3DBody
+   License:     See upstream repository.
+   Use here:    The vendored sam_3d_body inference package
+                (image2bvh/vendor/sam_3d_body/) was derived from this
+                repository. Modifications applied here include:
+                  - decoupling from ComfyUI's node infrastructure
+                  - exposing a Python-callable inference API
+                  - replacing per-person sequential calls with a
+                    single batched call
+                  - shifting the humanoid thumb mapping by one joint
+                    so the proximal-phalanx-onward chain is captured
+                BVH writing has been replaced with a pure-Python
+                static-pose writer (image2bvh/bvh_writer.py); the
+                original Blender-based builder scripts shipped with
+                the upstream node are no longer used.
+
+------------------------------------------------------------------------
+6. ComfyUI-SAM3DBody_utills (forward-lean correction reference)
+------------------------------------------------------------------------
+   Upstream:    https://github.com/tori29umai0123/ComfyUI-SAM3DBody_utills
+   License:     See upstream repository.
+   Use here:    The forward-lean correction algorithm in
+                image2bvh/pose.py:apply_lean_correction was ported
+                from this repo's
+                nodes/processing/process.py:apply_pose_lean_correction_rig.
+                The default chain (spine_01 +20°, neck_01 +2°,
+                head +2°) and the rig-space rotation math match the
+                upstream behaviour.
+
+------------------------------------------------------------------------
+7. Python dependencies declared in pyproject.toml
+------------------------------------------------------------------------
+   PyTorch / torchvision / transformers / huggingface_hub /
+   accelerate / einops / timm / smplx / trimesh / pyyaml / yacs /
+   termcolor / loguru / joblib / braceexpand / omegaconf /
+   pytorch-lightning / roma / fastapi / uvicorn / starlette /
+   python-multipart / numpy / scipy / pillow / opencv-python /
+   safetensors / tqdm / requests / triton / triton-windows
+   are each licensed under their own upstream terms (typically
+   Apache 2.0, BSD-3, or MIT). Refer to each project's repository
+   for the authoritative license text.
+
+------------------------------------------------------------------------
+Important reminders for redistributors
+------------------------------------------------------------------------
+- The "SAM Materials" definition in the SAM License explicitly covers
+  inference-enabling code in addition to model weights. The vendored
+  SAM 3D Body inference code in image2bvh/vendor/sam_3d_body/ falls
+  under this definition and must be redistributed under the SAM
+  License (a copy must accompany any redistribution).
+
+- The DINOv3 License imposes equivalent obligations on any
+  redistribution of the dinov3_repo snapshot.
+
+- The MIT License at the top of this repository covers ONLY the code
+  authored here (image2bvh/*.py except the vendor subtree, web/, the
+  run.bat / run.sh launchers, the tools/build_rigged_*.py builder
+  scripts, pyproject.toml, and config files). It does NOT relicense
+  any of the third-party components above.
+
+- Both the SAM License and the DINOv3 License prohibit certain
+  end-uses (military / weapons / nuclear / espionage / ITAR-controlled
+  applications) and require compliance with applicable trade
+  controls. Read the full license text in LICENSES/ before
+  redistribution.
+
+- Information in this NOTICE is provided as a best-effort summary
+  for engineering use and is not legal advice. For commercial
+  distribution or any non-trivial redistribution scenario, consult a
+  qualified intellectual-property attorney.

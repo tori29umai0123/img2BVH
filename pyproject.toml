@@ -1,0 +1,121 @@
+[project]
+name = "image2bvh"
+version = "0.1.0"
+description = "Image to multi-person BVH via SAM3 + SAM 3D Body (pure-Python BVH writer)"
+requires-python = "==3.11.*"
+dependencies = [
+    # Web UI (Gradio replaces the previous FastAPI + custom HTML/CSS/JS).
+    # The 3D bone preview is a Plotly Scatter3d, hence plotly is also pinned.
+    "gradio>=5.0",
+    "plotly>=5.20.0",
+
+    # Core numerics / image IO
+    # Pin to numpy 1.x. The vendored sam_3d_body / DINOv3 stack and several
+    # of its transitive deps were written against the 1.x C API; numpy 2.x
+    # changes (scalar promotion, copy semantics, removed aliases) cause
+    # silent breakage at runtime. Matches the reference repo's constraint.
+    "numpy>=1.26,<2.0",
+    "scipy>=1.12.0",
+    "pillow>=10.4.0",
+    "opencv-python>=4.10",
+    "safetensors>=0.4.5",
+    "tqdm>=4.66.0",
+    "requests>=2.32.0",
+
+    # Torch stack — all CUDA targets share a single cu130 nightly pin:
+    #   Win amd64 / Linux x86_64 / Linux aarch64 : CUDA 13.0 nightly
+    #     reason: cu128 stable's NVRTC tops out at sm_120, so GB10 (sm_121
+    #     Blackwell Ultra, DGX Spark) cannot JIT-compile at runtime. We
+    #     unify on cu130 nightly across all CUDA platforms so the same
+    #     toolchain version is used everywhere — keeps one nightly date
+    #     to bump and avoids stable/nightly skew between machines.
+    #   macOS : plain CPU/MPS wheels from PyPI
+    "torch==2.13.0.dev20260422+cu130; sys_platform == 'win32'",
+    "torchvision==0.27.0.dev20260422+cu130; sys_platform == 'win32'",
+    "torch==2.13.0.dev20260422+cu130; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "torchvision==0.27.0.dev20260422+cu130; sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "torch==2.13.0.dev20260422+cu130; sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "torchvision==0.27.0.dev20260422+cu130; sys_platform == 'linux' and platform_machine == 'aarch64'",
+    "torch>=2.5.0; sys_platform == 'darwin'",
+    "torchvision>=0.20.0; sys_platform == 'darwin'",
+
+    # Triton.
+    # Win  : triton-windows from PyPI (torch nightly on Windows does not
+    #        declare triton as a hard dep, so a PyPI build is enough).
+    # Linux: declare a single `triton` dep across both x86_64 and aarch64
+    #        — both architectures resolve to the URL-pinned local version
+    #        in [tool.uv.sources]. Declaring per-arch causes one of the
+    #        splits to lose visibility of the URL source, so torch's
+    #        transitive triton requirement becomes unsolvable.
+    # macOS: skipped (torch on MPS does not require triton)
+    "triton-windows; sys_platform == 'win32'",
+    "triton; sys_platform == 'linux'",
+
+    # SAM3 (text-prompt segmentation) + SAM3DBody backbone
+    "transformers>=4.57.0",
+    "huggingface_hub>=0.25.0",
+    "accelerate>=0.34.0",
+    "einops>=0.8.0",
+    "timm>=1.0.24",
+
+    # SAM3DBody / MHR — runtime dependencies of the vendored sam_3d_body
+    # package + DINOv3 backbone path. xformers / pyrender / detectron2 /
+    # ftfy / regex (CLIP) are deliberately excluded because the inference
+    # path does not import them (xformers' sparsify24 → LinearW24 is the
+    # only consumer and that is not exercised here; CLIP only loads if
+    # the text encoder is requested; pyrender is viz-only; detectron2
+    # is referenced from eval scripts we do not call).
+    "smplx>=0.1.28",
+    "trimesh>=4.4.0",
+    "pyyaml>=6.0",
+    "yacs>=0.1.8",
+    "termcolor>=2.4.0",
+    "loguru>=0.7.0",
+    "joblib>=1.2.0",
+    "braceexpand>=0.1.7",       # data/utils/io.py
+    "omegaconf>=2.3.0",         # models/meta_arch + utils/config
+    "pytorch-lightning>=2.0",   # base_lightning_module + rank_zero_only utility
+    "roma>=1.5.0",              # heads/mhr_head + modules
+]
+
+[tool.uv]
+package = false
+# darwin x86_64 (Intel Mac) was removed from this list: PyTorch dropped
+# Intel Mac wheels at 2.3 and we require torch>=2.5 on darwin (matches
+# what the SAM3 / SAM 3D Body stack ships against). Intel Macs would
+# need torch <=2.2.x which doesn't satisfy transformers >=4.57. If you
+# need to run this on an Intel Mac, downgrade transformers/torch by hand
+# in a separate environment — uv's multi-env resolver can't satisfy
+# this combination automatically.
+environments = [
+    "sys_platform == 'win32' and platform_machine == 'AMD64' and python_version == '3.11'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64' and python_version == '3.11'",
+    "sys_platform == 'linux' and platform_machine == 'aarch64' and python_version == '3.11'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64' and python_version == '3.11'",
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-nightly-cu130", marker = "sys_platform == 'win32'" },
+    { index = "pytorch-nightly-cu130", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
+    { index = "pytorch-nightly-cu130", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" },
+]
+torchvision = [
+    { index = "pytorch-nightly-cu130", marker = "sys_platform == 'win32'" },
+    { index = "pytorch-nightly-cu130", marker = "sys_platform == 'linux' and platform_machine == 'x86_64'" },
+    { index = "pytorch-nightly-cu130", marker = "sys_platform == 'linux' and platform_machine == 'aarch64'" },
+]
+# uv 0.11 cannot resolve PyTorch nightly's local-version triton (3.7.0+git*)
+# through an explicit index, so pin it by URL per architecture.
+# Marker uses platform_machine + python_version only (no `sys_platform`):
+# adding sys_platform here breaks the multi-environment resolver because
+# the source then fails to apply during cross-environment lock generation.
+triton = [
+    { url = "https://download-r2.pytorch.org/whl/nightly/triton-3.7.0%2Bgitb4e20bbe-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", marker = "platform_machine == 'x86_64' and python_version == '3.11'" },
+    { url = "https://download-r2.pytorch.org/whl/nightly/triton-3.7.0%2Bgitb4e20bbe-cp311-cp311-linux_aarch64.whl", marker = "platform_machine == 'aarch64' and python_version == '3.11'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-nightly-cu130"
+url = "https://download.pytorch.org/whl/nightly/cu130"
+explicit = true
