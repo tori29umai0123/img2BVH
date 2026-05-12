@@ -111,10 +111,18 @@ class MHRHead(nn.Module):
                 lod=1,
             )
         else:
-            self.mhr = torch.jit.load(
-                mhr_model_path,
-                map_location=("cuda" if torch.cuda.is_available() else "cpu"),
-            )
+            # Pass an opened file handle instead of a path string. libtorch's
+            # ``torch.jit.load(str)`` route uses C ``fopen()`` which on
+            # Windows cannot open paths containing non-ASCII characters
+            # (e.g. an install dir named "新しいフォルダー" or a user
+            # profile in Japanese), failing with errno 2. Going through a
+            # Python file object uses ``_wfopen`` and works for any Unicode
+            # path the OS itself accepts.
+            with open(mhr_model_path, "rb") as _mhr_f:
+                self.mhr = torch.jit.load(
+                    _mhr_f,
+                    map_location=("cuda" if torch.cuda.is_available() else "cpu"),
+                )
 
         for param in self.mhr.parameters():
             param.requires_grad = False

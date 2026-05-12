@@ -841,7 +841,7 @@ def _pick_free_port(host: str, start: int, tries: int = 50) -> int:
 
 
 def _show_control_window(port: int) -> None:
-    """Black control window. Closing it terminates the whole process.
+    """Dark control window. Closing it terminates the whole process.
 
     image2bvh.exe is a windowed (no-console) build, so without a visible
     surface there's nowhere for the user to click "quit". This Tk window
@@ -850,12 +850,25 @@ def _show_control_window(port: int) -> None:
     """
     import os
     import tkinter as tk
+    import webbrowser
+
+    BG          = "#1e1e2e"
+    BG_CARD     = "#2a2a3e"
+    FG          = "#e2e8f0"
+    FG_MUTED    = "#94a3b8"
+    ACCENT      = "#7dd3fc"
+    OK          = "#10b981"
+    DANGER      = "#f87171"
+    BTN_BG      = "#3b3b52"
+    BTN_BG_HOVER = "#4a4a64"
+
+    url = f"http://127.0.0.1:{port}"
 
     root = tk.Tk()
     root.title("image2bvh")
-    root.configure(bg="black")
-    root.geometry("520x260")
-    root.minsize(320, 160)
+    root.configure(bg=BG)
+    root.geometry("440x300")
+    root.minsize(360, 260)
 
     def _quit() -> None:
         os._exit(0)
@@ -863,17 +876,48 @@ def _show_control_window(port: int) -> None:
     root.protocol("WM_DELETE_WINDOW", _quit)
 
     tk.Label(
-        root,
-        text=(
-            "image2bvh は起動中です\n\n"
-            f"http://127.0.0.1:{port}\n\n"
-            "このウィンドウを閉じるとアプリが終了します"
-        ),
-        fg="white",
-        bg="black",
-        font=("Meiryo UI", 11),
-        justify="center",
-    ).pack(expand=True, fill="both", padx=20, pady=20)
+        root, text="image2bvh", bg=BG, fg=FG,
+        font=("Meiryo UI", 22, "bold"),
+    ).pack(pady=(28, 4))
+
+    status_row = tk.Frame(root, bg=BG)
+    status_row.pack(pady=(0, 18))
+    tk.Label(status_row, text="●", bg=BG, fg=OK,
+             font=("Meiryo UI", 12)).pack(side="left", padx=(0, 6))
+    tk.Label(status_row, text="running", bg=BG, fg=FG_MUTED,
+             font=("Meiryo UI", 10)).pack(side="left")
+
+    url_card = tk.Frame(root, bg=BG_CARD, highlightthickness=0)
+    url_card.pack(fill="x", padx=28, pady=(0, 18))
+    url_lbl = tk.Label(
+        url_card, text=url, bg=BG_CARD, fg=ACCENT,
+        font=("Consolas", 12), pady=12, cursor="hand2",
+    )
+    url_lbl.pack()
+    url_lbl.bind("<Button-1>", lambda _e: webbrowser.open(url))
+
+    btn_row = tk.Frame(root, bg=BG)
+    btn_row.pack(pady=(0, 16))
+
+    def _make_btn(parent: tk.Widget, text: str, fg: str, command) -> tk.Button:
+        b = tk.Button(
+            parent, text=text, command=command,
+            bg=BTN_BG, fg=fg, activebackground=BTN_BG_HOVER,
+            activeforeground=fg, relief="flat", borderwidth=0,
+            padx=18, pady=8, font=("Meiryo UI", 10), cursor="hand2",
+        )
+        b.bind("<Enter>", lambda _e: b.configure(bg=BTN_BG_HOVER))
+        b.bind("<Leave>", lambda _e: b.configure(bg=BTN_BG))
+        return b
+
+    _make_btn(btn_row, "ブラウザで開く", FG,
+              lambda: webbrowser.open(url)).pack(side="left", padx=4)
+    _make_btn(btn_row, "終了", DANGER, _quit).pack(side="left", padx=4)
+
+    tk.Label(
+        root, text="ウィンドウを閉じてもアプリは終了します",
+        bg=BG, fg=FG_MUTED, font=("Meiryo UI", 9),
+    ).pack(side="bottom", pady=(0, 14))
 
     root.mainloop()
 
